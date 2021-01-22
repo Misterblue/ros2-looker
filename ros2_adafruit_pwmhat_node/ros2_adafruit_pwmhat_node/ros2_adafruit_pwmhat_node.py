@@ -169,16 +169,6 @@ class ROS2_Adafruit_pwmhat_node(Node):
         self.get_logger().debug("set_pwm: pin=%s conv_pulse_length=%s" % (conv_pin, conv_pulse_length) )
         self.pwm.set_pwm(conv_pin, 0, conv_pulse_length)
 
-    def get_parameter_or(self, param, default):
-        # Helper function to return value of a parameter or a default if not set
-        ret = None
-        param_desc = self.get_parameter(param)
-        if param_desc.type_== Parameter.Type.NOT_SET:
-            ret = default
-        else:
-            ret = param_desc.value
-        return ret
-
     def get_parameter_value(self, param):
         # Helper function to return value of a parameter
         ret = None
@@ -198,18 +188,6 @@ class ROS2_Adafruit_pwmhat_node(Node):
                 parameters_to_set.append( Parameter(pparam, ptype, pdefault) )
         if len(parameters_to_set) > 0:
             self.set_parameters(parameters_to_set)
-
-    def parameter_set_if_set(self, param, set_function):
-        # If there is a parameter set, do set_function with the value
-        if self.has_parameter(param):
-            set_function(self.get_parameter_value(param))
-
-    def has_parameter(self, param):
-        # Return 'True' if a parameter by that name is specified
-        param_desc = self.get_parameter(param)
-        if param_desc.type_== Parameter.Type.NOT_SET:
-            return False
-        return True
 
 def main(args=None):
     rclpy.init(args=args)

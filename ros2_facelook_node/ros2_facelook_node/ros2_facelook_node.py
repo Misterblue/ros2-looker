@@ -182,16 +182,6 @@ class ROS2_facelook_node(Node):
                 self.get_logger().error('FLooker: target tilt angle failed! targets=%s/%s'
                                 % (target_pan_angle, target_tilt_angle) )
                     
-    def get_parameter_or(self, param, default):
-        # Helper function to return value of a parameter or a default if not set
-        ret = None
-        param_desc = self.get_parameter(param)
-        if param_desc.type_== Parameter.Type.NOT_SET:
-            ret = default
-        else:
-            ret = param_desc.value
-        return ret
-
     def get_parameter_value(self, param):
         # Helper function to return value of a parameter
         ret = None
@@ -211,13 +201,6 @@ class ROS2_facelook_node(Node):
                 parameters_to_set.append( Parameter(pparam, ptype, pdefault) )
         if len(parameters_to_set) > 0:
             self.set_parameters(parameters_to_set)
-
-    def has_parameter(self, param):
-        # Return 'True' if a parameter by that name is specified
-        param_desc = self.get_parameter(param)
-        if param_desc.type_== Parameter.Type.NOT_SET:
-            return False
-        return True
 
     def sign(self, val):
         # Helper function that returns the sign of the passed value (1 or -1).
