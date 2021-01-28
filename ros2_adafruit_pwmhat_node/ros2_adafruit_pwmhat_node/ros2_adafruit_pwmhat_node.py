@@ -34,9 +34,13 @@ class ROS2_Adafruit_pwmhat_node(Node):
         self.set_parameter_defaults( [
             ('pwm_frequency', Parameter.Type.INTEGER, 100),
             ('pinAngle_topic', Parameter.Type.STRING, 'pinAngle'),
+            ('pinAngle_topic_subqos', Parameter.Type.INTEGER, 10),
             ('angle_topic', Parameter.Type.STRING, 'angle'),
+            ('angle_topic_subqos', Parameter.Type.INTEGER, 10),
             ('pinPulseLength_topic', Parameter.Type.STRING, 'pinPulseLength'),
+            ('pinPulseLength_topic_subqos', Parameter.Type.INTEGER, 10),
             ('pulseLength_topic', Parameter.Type.STRING, 'pulseLength'),
+            ('pulseLength_topic_subqos', Parameter.Type.INTEGER, 10),
             ] )
 
         self.pwm = Adafruit_PCA9685.PCA9685()
@@ -49,19 +53,23 @@ class ROS2_Adafruit_pwmhat_node(Node):
         self.subs.append(self.create_subscription(
                     PWMPinAngle,
                     self.get_parameter_value('pinAngle_topic'),
-                    self.pinAngle_callback))
+                    self.pinAngle_callback),
+                    self.get_parameter('pinAngle_topic_subqos'))
         self.subs.append(self.create_subscription(
                     PWMAngle,
                     self.get_parameter_value('angle_topic'),
-                    self.angle_callback))
+                    self.angle_callback),
+                    self.get_parameter('angle_topic_subqos'))
         self.subs.append(self.create_subscription(
                     PWMPinPulseLength,
                     self.get_parameter_value('pinPulseLength_topic'),
-                    self.pinPulseLength_callback))
+                    self.pinPulseLength_callback),
+                    self.get_parameter('pinPulseLength_topic_subqos'))
         self.subs.append(self.create_subscription(
                     PWMPulseLength,
                     self.get_parameter_value('pulseLength_topic'),
-                    self.pulseLength_callback))
+                    self.pulseLength_callback),
+                    self.get_parameter('pulseLength_topic_subqos'))
 
         # THE FOLLOWING DATA WILL COME FROM PARAMETER FILES WHEN THAT WORKS FOR ROS2 AND PYTHON
 
@@ -182,12 +190,9 @@ class ROS2_Adafruit_pwmhat_node(Node):
     def set_parameter_defaults(self, params):
         # If a parameter has not been set externally, set the value to a default.
         # Passed a list of "(parameterName, parameterType, defaultValue)" tuples.
-        parameters_to_set = []
         for (pparam, ptype, pdefault) in params:
             if not self.has_parameter(pparam):
-                parameters_to_set.append( Parameter(pparam, ptype, pdefault) )
-        if len(parameters_to_set) > 0:
-            self.set_parameters(parameters_to_set)
+                self.declare_parameter(pparam, pdefault)
 
 def main(args=None):
     rclpy.init(args=args)

@@ -32,7 +32,9 @@ class ROS2_raspicam_node(Node):
         self.set_parameter_defaults( [
             ('compressed_image', Parameter.Type.BOOL, True),
             ('image_topic', Parameter.Type.STRING, 'raspicam_uncompressed'),
-            ('compressed_image_topic', Parameter.Type.STRING, 'raspicam_compressed'),
+            ('image_topic_qos', Parameter.Type.STRING, 'raspicam_uncompressed'),
+            ('compressed_image_topic', Parameter.Type.INTEGER, 10),
+            ('compressed_image_topic_qos', Parameter.Type.INTEGER, 10),
 
             # off, auto, sunlight, cloudy, shade, trungsten, florescent, incandescent, flash, horizon
             ('camera_awb_mode', Parameter.Type.STRING, 'auto'),
@@ -88,10 +90,12 @@ class ROS2_raspicam_node(Node):
     def initialize_publisher(self):
         if self.get_parameter_value('compressed_image'):
             self.publisher = self.create_publisher(CompressedImage,
-                                self.get_parameter_value('compressed_image_topic'))
+                                self.get_parameter_value('compressed_image_topic'),
+                                self.get_parameter_value('compressed_image_topic_qos') )
         else:
             self.publisher = self.create_publisher(Image,
-                                self.get_parameter_value('image_topic'))
+                                self.get_parameter_value('image_topic'),
+                                self.get_parameter_value('image_topic_qos') )
         self.frame_num = 0
         
     def set_camera_parameters(self):
@@ -219,12 +223,9 @@ class ROS2_raspicam_node(Node):
     def set_parameter_defaults(self, params):
         # If a parameter has not been set externally, set the value to a default.
         # Passed a list of "(parameterName, parameterType, defaultValue)" tuples.
-        parameters_to_set = []
         for (pparam, ptype, pdefault) in params:
             if not self.has_parameter(pparam):
-                parameters_to_set.append( Parameter(pparam, ptype, pdefault) )
-        if len(parameters_to_set) > 0:
-            self.set_parameters(parameters_to_set)
+                self.declare_parameter(pparam, pdefault)
 
     def parameter_set_if_set(self, param, set_function):
         # If there is a parameter set, do set_function with the value

@@ -33,7 +33,9 @@ class ROS2_facelook_node(Node):
 
         self.set_parameter_defaults( [
             ('bounding_box_topic', Parameter.Type.STRING, 'found_faces'),
+            ('bounding_box_topic_subqos', Parameter.Type.INTEGER, 10),
             ('pwm_topic', Parameter.Type.STRING, '/pwmhatter/angle'),
+            ('pwm_topic_pubqos', Parameter.Type.INTEGER, 10),
             ('angle_step', Parameter.Type.DOUBLE, 1.0),
             ('delta_magnification', Parameter.Type.DOUBLE, 10.0),
             ('max_angle', Parameter.Type.DOUBLE, 80.0),
@@ -51,7 +53,8 @@ class ROS2_facelook_node(Node):
         # Setup subscription for incoming bounding box info
         self.receiver = self.create_subscription(Int32MultiArray,
                         self.get_parameter_value('bounding_box_topic'),
-                        self.receive_bounding_box)
+                        self.receive_bounding_box,
+                        self.get_parameter_value('bounding_box_topic_subqos') )
 
     def initialize_processing_queue(self):
         # Create a queue and a thread that processes messages in the queue
@@ -73,6 +76,7 @@ class ROS2_facelook_node(Node):
 
         self.pwmmer = PWMmer(self,
                             self.get_parameter_value('pwm_topic'),
+                            self.get_parameter_value('pwm_topic_pubqos'),
                             -self.get_parameter_value('max_angle'),
                             self.get_parameter_value('max_angle'),
                             self.get_logger())
@@ -195,12 +199,9 @@ class ROS2_facelook_node(Node):
     def set_parameter_defaults(self, params):
         # If a parameter has not been set externally, set the value to a default.
         # Passed a list of "(parameterName, parameterType, defaultValue)" tuples.
-        parameters_to_set = []
         for (pparam, ptype, pdefault) in params:
             if not self.has_parameter(pparam):
-                parameters_to_set.append( Parameter(pparam, ptype, pdefault) )
-        if len(parameters_to_set) > 0:
-            self.set_parameters(parameters_to_set)
+                self.declare_parameter(pparam, pdefault)
 
     def sign(self, val):
         # Helper function that returns the sign of the passed value (1 or -1).
@@ -209,9 +210,10 @@ class ROS2_facelook_node(Node):
 
 class PWMmer:
     # Small class to hold current state of PWM channel
-    def __init__(self, node, topic, minVal, maxVal, logger=None):
+    def __init__(self, node, topic, topic_pubqos, minVal, maxVal, logger=None):
         self.node = node
         self.topic = topic
+        self.topic_pubqos = topic_pubqos
         self.minVal = minVal
         self.maxVal = maxVal
         self.logger = logger
@@ -219,7 +221,7 @@ class PWMmer:
         self.logger.debug('PWMmer: init: topic=%s, min=%s, max=%s' %
                     (topic, str(minVal), str(maxVal)))
 
-        self.publisher = self.node.create_publisher(PWMAngle, topic)
+        self.publisher = self.node.create_publisher(PWMAngle, topic, topic_pubqos)
 
     def setPWM(self, channel, angle):
         # Send the message to set the given PWM channel

@@ -36,8 +36,11 @@ class ROS2_facefinder_node(Node):
 
         self.set_parameter_defaults( [
             ('image_input_topic', Parameter.Type.STRING, 'raspicam_compressed'),
+            ('image_input_topic_subqos', Parameter.Type.INTEGER, 10),
             ('image_compressed', Parameter.Type.BOOL, True),
-            ('face_output_topic', Parameter.Type.STRING, 'found_faces')
+            ('face_output_topic', Parameter.Type.STRING, 'found_faces'),
+            ('face_output_topic_subqos', Parameter.Type.INTEGER, 10),
+            ('face_output_topic_pubqos', Parameter.Type.INTEGER, 10)
             ] )
 
         self.initialize_face_recognizer()
@@ -59,16 +62,21 @@ class ROS2_facefinder_node(Node):
         if self.get_parameter_value('image_compressed'):
             self.receiver = self.create_subscription(
                         CompressedImage, self.get_parameter_value('image_input_topic'),
-                        self.receive_image)
+                        self.receive_image,
+                        self.get_parameter_value('image_input_topic_subqos'),
+                        )
         else:
             self.receiver = self.create_subscription(
                         Image, self.get_parameter_value('image_input_topic'),
-                        self.receive_image)
+                        self.receive_image,
+                        self.get_parameter_value('image_input_topic_subqos'),
+                        )
         self.frame_num = 0
 
     def initialize_bounding_box_publisher(self):
         self.bounding_box_publisher = self.create_publisher(Int32MultiArray,
-                                        self.get_parameter_value('face_output_topic'))
+                                        self.get_parameter_value('face_output_topic'),
+                                        self.get_parameter_value('face_output_topic_pubqos') )
 
     def initialize_processing_queue(self):
         # Create a queue and a thread that processes messages in the queue
@@ -197,12 +205,9 @@ class ROS2_facefinder_node(Node):
     def set_parameter_defaults(self, params):
         # If a parameter has not been set externally, set the value to a default.
         # Passed a list of "(parameterName, parameterType, defaultValue)" tuples.
-        parameters_to_set = []
         for (pparam, ptype, pdefault) in params:
             if not self.has_parameter(pparam):
-                parameters_to_set.append( Parameter(pparam, ptype, pdefault) )
-        if len(parameters_to_set) > 0:
-            self.set_parameters(parameters_to_set)
+                self.declare_parameter(pparam, pdefault)
 
 class CodeTimer:
     # A little helper class for timing blocks of code.
