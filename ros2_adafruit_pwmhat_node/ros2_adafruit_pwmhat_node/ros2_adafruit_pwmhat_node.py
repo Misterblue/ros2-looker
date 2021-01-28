@@ -53,23 +53,23 @@ class ROS2_Adafruit_pwmhat_node(Node):
         self.subs.append(self.create_subscription(
                     PWMPinAngle,
                     self.get_parameter_value('pinAngle_topic'),
-                    self.pinAngle_callback),
-                    self.get_parameter('pinAngle_topic_subqos'))
+                    self.pinAngle_callback,
+                    self.get_parameter_value('pinAngle_topic_subqos') ) )
         self.subs.append(self.create_subscription(
                     PWMAngle,
                     self.get_parameter_value('angle_topic'),
-                    self.angle_callback),
-                    self.get_parameter('angle_topic_subqos'))
+                    self.angle_callback,
+                    self.get_parameter_value('angle_topic_subqos') ) )
         self.subs.append(self.create_subscription(
                     PWMPinPulseLength,
                     self.get_parameter_value('pinPulseLength_topic'),
-                    self.pinPulseLength_callback),
-                    self.get_parameter('pinPulseLength_topic_subqos'))
+                    self.pinPulseLength_callback,
+                    self.get_parameter_value('pinPulseLength_topic_subqos') ) )
         self.subs.append(self.create_subscription(
                     PWMPulseLength,
                     self.get_parameter_value('pulseLength_topic'),
-                    self.pulseLength_callback),
-                    self.get_parameter('pulseLength_topic_subqos'))
+                    self.pulseLength_callback,
+                    self.get_parameter_value('pulseLength_topic_subqos') ) )
 
         # THE FOLLOWING DATA WILL COME FROM PARAMETER FILES WHEN THAT WORKS FOR ROS2 AND PYTHON
 
