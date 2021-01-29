@@ -1,0 +1,47 @@
+# Create base image of Ubuntu 20.04 with ROS2 installed for arm64
+
+# FROM arm64v8/ubuntu:20.04
+FROM ubuntu:20.04
+
+RUN echo UTC > /etc/timezone
+
+# Tell the libraries not to use the interactive dialogs
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=linux
+
+# Update the image
+RUN apt-get update \
+    && apt-get upgrade -y
+
+# ROS2 needs locale set to UTF-8
+RUN apt-get install -y locales \
+    && locale-gen en_US en_US.UTF-8 \
+    && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+ENV LANG=en_US.UTF-8
+
+# Utility packages
+# 'tini' is SIGNAL handling wrapper for running the application
+# 'apt-utils' is tools used for installing packages
+RUN apt-get install -y tini apt-utils
+
+# Packages needed for ROS2 installation
+RUN apt-get install -y curl gnupg2 lsb-release
+
+# Setup ROS2 repository keys
+RUN apt-key adv --fetch-keys https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc \
+    && sh -c 'echo "deb [arch=$(dpkg --print-architecture)] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2-latest.list' \
+    && apt-get update
+
+# Install ROS2
+RUN apt-get install -y ros-foxy-ros-base
+
+# Someday install OpenDDS
+# https://github.com/objectcomputing/OpenDDS/releases/download/DDS-3.15/OpenDDS-3.15.tar.gz
+
+# Bash command completion for python to make things easier
+RUN apt-get install python3-argcomplete
+
+# 'nonroot' user for running applications.
+# Fixed user and group numbers for easier setting outside of the container
+RUN adduser --disabled-password --uid 20000 --gecos 'non-root user for running app' nonroot
+# USER nonroot

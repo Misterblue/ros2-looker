@@ -1,0 +1,24 @@
+# Create image with all Looker nodes
+FROM misterblue/ros2-looker-base
+
+RUN echo UTC > /etc/timezone
+
+# Tell the libraries not to use the interactive dialogs
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=linux
+
+# Change to the non-root user so after this is all app space
+USER nonroot
+
+# Get the node code
+RUN cd \
+    && git clone https://github.com/Misterblue/ros2-looker.git \
+    && cd ros2-looker \
+    && . /opt/ros/foxy/setup.sh \
+    && colcon build
+
+COPY files/looker-start.sh /home/nonroot
+
+ENTRYPOINT [ "/usr/bin/tini", "--", "/home/nonroot/looker-start.sh" ]
+# Default arguments for your app (remove if you have none)
+# CMD [ "--foo", "1", "--bar=2" ]

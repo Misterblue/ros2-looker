@@ -1,0 +1,33 @@
+# Create image with all Looker nodes
+FROM misterblue/ros2-base
+
+RUN echo UTC > /etc/timezone
+
+# Tell the libraries not to use the interactive dialogs
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=linux
+
+# Get needed installation and debugging tools
+RUN apt-get update \
+    && apt-get install -y vim git curl wget
+
+# Get all the needed Python tools
+RUN apt-get install -y python-dev python3-pip python3-colcon-common-extensions
+
+# Get Raspberry Pi Python tools
+RUN apt-get install -y i2c-tools python3-smbus
+
+# Get the AdaFruit tools for accessing the PWMHAT
+RUN cd \
+    && git clone https://github.com/adafruit/Adafruit_Python_PCA9685.git \
+    && cd Adafruit_Python_PCA9685 \
+    && python3 setup.py install
+
+RUN cd \
+    && pip3 install Adafruit-GPIO
+
+# Add Python libraries used by the nodes (as separate layers if any errors)
+RUN pip3 install imageio
+RUN pip3 install dlib
+
+
