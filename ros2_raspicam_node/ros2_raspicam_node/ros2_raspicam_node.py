@@ -1,4 +1,4 @@
-# Copyright 2018 Robert Adams
+# Copyright 2021 Robert Adams
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import queue
 import threading
 import time
+import traceback
 import sys
 
 import rclpy
 from rclpy.parameter import Parameter
 from rclpy.node import Node
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import Image, CompressedImage
 
 import cv2
 
@@ -40,7 +42,7 @@ class ROS2_raspicam_node(Node):
             ('camera_image_width', Parameter.Type.INTEGER, 640),
             ('camera_image_height', Parameter.Type.INTEGER, 480),
             # Saturation: -100..100, default 0
-            ('camera_awb_mode', Parameter.Type.BOOL, true),
+            ('camera_awb_mode', Parameter.Type.BOOL, True),
             ('camera_wb_temp', Parameter.Type.INTEGER, 2700),
             # ('camera_wb_red', Parameter.Type.INTEGER, 128),
             # ('camera_wb_green', Parameter.Type.INTEGER, 128),
@@ -72,6 +74,8 @@ class ROS2_raspicam_node(Node):
             # ('camera_sharpness', Parameter.Type.INTEGER, 10),
             ] )
 
+        self.keepRunning = True
+
         self.camera = cv2.VideoCapture(0)
         time.sleep(1);  # let camera initialization complete
 
@@ -84,7 +88,7 @@ class ROS2_raspicam_node(Node):
         # if hasattr(self, 'publisher') and self.publisher != None:
         #     # nothing to do
         if hasattr(self, 'camera') and self.camera != None:
-            self.camera.close()
+            self.camera.release()
         super().destroy_node()
 
     def initialize_publisher(self):
@@ -99,16 +103,16 @@ class ROS2_raspicam_node(Node):
         self.frame_num = 0
         
     def set_camera_parameters(self):
-        self.camera.set(cv2.CAP_PROP_CONVERT_RGB, True)
+        self.camera.set(cv2.CAP_PROP_CONVERT_RGB, 1.0)
         self.camera.set(cv2.CAP_PROP_FPS, self.get_parameter_value('camera_frame_rate'))
 
         self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.get_parameter_value('camera_image_width'))
         self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.get_parameter_value('camera_image_height'))
 
         if self.get_parameter_value('camera_awb_mode'):
-            self.camera.set(cv2.CAP_PROP_AUTO_WB, True)
+            self.camera.set(cv2.CAP_PROP_AUTO_WB, 1.0)
         else:
-            self.camera.set(cv2.CAP_PROP_AUTO_WB, False)
+            self.camera.set(cv2.CAP_PROP_AUTO_WB, 0)
             self.camera.set(cv2.CAP_PROP_AUTO_WB, self.get_parameter_value('camera_temp'))
         
         self.camera.set(cv2.CAP_PROP_CONTRAST, self.get_parameter_value('camera_contrast'))
@@ -167,37 +171,45 @@ class ROS2_raspicam_node(Node):
     def take_pictures(self):
         # Take compressed images and put into the queue.
         # 'jpeg', 'rgb'
+        # https://docs.opencv.org/3.4/d8/dfe/classcv_1_1VideoCapture.html
         try:
-            for capture in self.camera.capture_continuous(self.write_capture(self), format='jpeg'):
-                if self.capture_event.is_set():
-                    break
+            while self.keepRunning:
+                ret, frame = self.camera.read()
+                if ret == True:
+                   if self.get_parameter_value('compressed_image'):
+                        result, encimg = cv2.imencode('.jpg', frame)
+                        if result == True:
+                            self.write_compressed_capture(encimg)
+                   else:
+                        self.write_capture(encimg)
+
                 time.sleep(0.5)
-                # The exit flag could have been set while in the sleep
-                if self.capture_event.is_set():
-                    break
-        except:
-            self.get_logger().error('CAM: exiting take_pictures because of exception')
+        except Exception as err:
+            self.get_logger().error('take_pictures: exiting take_pictures because of exception')
+            self.get_logger().error(traceback.format_exc())
 
-    class write_capture():
-        # Writer object that writes the passed data to the queue
-        def __init__(self, pparent):
-            self.parent = pparent
+    def write_capture(self, frame):
+        with self.queue_lock:
+            msg = Image()
+            msg.data = frame
+            msg.header.frame_id = str(self.frame_num)
+            self.frame_num += 1
+            self.get_logger().debug('write_capture: capture frame. size=%s, frame=%s'
+                    % (len(frame), msg.header.frame_id) )
+            # msg.header.stamp = time.Time
+            self.capture_queue.put(msg)
 
-        def write(self, d):
-            if not self.parent.capture_event.is_set():
-                with self.parent.queue_lock:
-                    msg = CompressedImage()
-                    msg.data = d
-                    msg.format = 'jpeg'
-                    msg.header.frame_id = str(self.parent.frame_num)
-                    self.parent.frame_num += 1
-                    self.parent.get_logger().debug('CAM: capture frame. size=%s, frame=%s'
-                            % (len(d), msg.header.frame_id) )
-                    # msg.header.stamp = time.Time
-                    self.parent.capture_queue.put(msg)
-
-        def flush(self):
-            return
+    def write_compressed_capture(self, frame):
+        with self.queue_lock:
+            msg = CompressedImage()
+            msg.data = np.array(frame).tostring()
+            msg.format = 'jpeg'
+            msg.header.frame_id = str(self.frame_num)
+            self.frame_num += 1
+            self.get_logger().debug('write_compressed_capture: capture frame. size=%s, frame=%s'
+                    % (len(frame), msg.header.frame_id) )
+            # msg.header.stamp = time.Time
+            self.capture_queue.put(msg)
 
     def publish_images(self):
         # Loop reading from capture queue and send to ROS topic
@@ -246,6 +258,7 @@ def main(args=None):
         rclpy.spin(camNode)
     except KeyboardInterrupt:
         camNode.get_logger().info('CAM: Keyboard interrupt')
+        camNode.keepRunning = False
 
     camNode.stop_workers()
 
