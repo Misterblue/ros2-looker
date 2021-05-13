@@ -6,7 +6,10 @@ TAG=ros2-looker-base
 VER=latest
 DF=./Dockerfile-looker-base
 
-# NOCACHE=--no-cache
+NOCACHE=
+if [[ "$1" == "NOCACHE" ]] ; then
+    NOCACHE=--no-cache
+fi 
 
 docker buildx build ${NOCACHE} -t "${REPOS}/${TAG}:${VER}" --push --platform linux/amd64,linux/arm64 -f "${DF}" .
 # docker buildx build --load -t "${TAG}:${VER}" -f "${DF}" .

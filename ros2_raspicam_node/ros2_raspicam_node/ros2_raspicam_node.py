@@ -22,7 +22,7 @@ from rclpy.parameter import Parameter
 from rclpy.node import Node
 from sensor_msgs.msg import CompressedImage
 
-import picamera
+import cv2
 
 class ROS2_raspicam_node(Node):
 
@@ -32,47 +32,47 @@ class ROS2_raspicam_node(Node):
         self.set_parameter_defaults( [
             ('compressed_image', Parameter.Type.BOOL, True),
             ('image_topic', Parameter.Type.STRING, 'raspicam_uncompressed'),
-            ('image_topic_qos', Parameter.Type.STRING, 'raspicam_uncompressed'),
-            ('compressed_image_topic', Parameter.Type.INTEGER, 10),
+            ('image_topic_qos', Parameter.Type.INTEGER, 10),
+            ('compressed_image_topic', Parameter.Type.STRING, 'raspicam_compressed'),
             ('compressed_image_topic_qos', Parameter.Type.INTEGER, 10),
 
-            # off, auto, sunlight, cloudy, shade, trungsten, florescent, incandescent, flash, horizon
-            ('camera_awb_mode', Parameter.Type.STRING, 'auto'),
-            # ('camera_annotate_background', Parameter.Type.STRING, 'black'),
-            # ('camera_annotate_foreground', Parameter.Type.STRING, 'yellow'),
-            # ('camera_annotate_text', Parameter.Type.STRING, 'fun image'),
-            # text size: 6..160, default 32
-            # ('camera_annotate_text_size', Parameter.Type.INTEGER, 10),
+            ('camera_frame_rate', Parameter.Type.INTEGER, 2),
+            ('camera_image_width', Parameter.Type.INTEGER, 640),
+            ('camera_image_height', Parameter.Type.INTEGER, 480),
+            # Saturation: -100..100, default 0
+            ('camera_awb_mode', Parameter.Type.BOOL, true),
+            ('camera_wb_temp', Parameter.Type.INTEGER, 2700),
+            # ('camera_wb_red', Parameter.Type.INTEGER, 128),
+            # ('camera_wb_green', Parameter.Type.INTEGER, 128),
+            # ('camera_wb_blue', Parameter.Type.INTEGER, 128),
             # brightness: 1..100, default 50
             ('camera_brightness', Parameter.Type.INTEGER, 55),
             # Contrast: -100..100, default 0
             ('camera_contrast', Parameter.Type.INTEGER, 0),
+
             # ('camera_exif_copyright', Parameter.Type.STRING, 'Copyrightt 2018 MY NAME'),
             # ('camera_user_comment', Parameter.Type.STRING, 'SOMETHING INFORMATIVE'),
             # Exposure compenstation: -25..25, default 0, one step = 1/6 F-stop
-            ('camera_exposure_compenstation', Parameter.Type.INTEGER, 0),
+            # ('camera_exposure_compenstation', Parameter.Type.INTEGER, 0),
             # off, auto, night, backlight, spotlight, sports, snow, beach, antishake, fireworks
-            ('camera_exposure_mode', Parameter.Type.STRING, 'auto'),
+            # ('camera_exposure_mode', Parameter.Type.STRING, 'auto'),
             # the camera is upside down in initial setup
-            ('camera_hflip', Parameter.Type.BOOL, True),
-            ('camera_vflip', Parameter.Type.BOOL, True),
+            # ('camera_hflip', Parameter.Type.BOOL, True),
+            # ('camera_vflip', Parameter.Type.BOOL, True),
             # 'none', 'negative', 'solarize', 'sketch', 'denoise', 'emboss', 'oilpaint',
             # 'hatch', 'gpen', 'pastel', 'watercolor', 'film', 'blur', 'saturation',
             # 'colorswap', 'washedout', 'posterise', 'colorpoint', 'colorbalance', 'cartoon', 'deinterlace1',
             # 'deinterlace2'
-            ('camera_image_effect', Parameter.Type.STRING, 'none'),
+            # ('camera_image_effect', Parameter.Type.STRING, 'none'),
             # 'average' 'spot' 'backlit' 'matrix'
-            ('camera_meter_mode', Parameter.Type.STRING, 'average'),
+            # ('camera_meter_mode', Parameter.Type.STRING, 'average'),
             # 640/480, 800/600, 1280/720
-            ('camera_image_width', Parameter.Type.INTEGER, 640),
-            ('camera_image_height', Parameter.Type.INTEGER, 480),
-            # Saturation: -100..100, default 0
-            ('camera_saturation', Parameter.Type.INTEGER, 0),
+            # ('camera_saturation', Parameter.Type.INTEGER, 0),
             # Sharpness: -100..100, default 0
-            ('camera_sharpness', Parameter.Type.INTEGER, 10),
+            # ('camera_sharpness', Parameter.Type.INTEGER, 10),
             ] )
 
-        self.camera = picamera.PiCamera()
+        self.camera = cv2.VideoCapture(0)
         time.sleep(1);  # let camera initialization complete
 
         self.initialize_publisher()
@@ -99,35 +99,40 @@ class ROS2_raspicam_node(Node):
         self.frame_num = 0
         
     def set_camera_parameters(self):
-        # https://picamera.readthedocs.io/en/release-1.13/api_camera.html
-        self.camera.awb_mode = self.get_parameter_value('camera_awb_mode')
-        self.parameter_set_if_set('camera_annotate_background',
-                lambda xx: setattr(self.camera, 'annotate_background', xx))
-        self.parameter_set_if_set('camera_annotate_foreground',
-                lambda xx: setattr(self.camera, 'annotate_foreground', xx))
-        self.parameter_set_if_set('camera_annotate_text',
-                lambda xx: setattr(self.camera, 'annotate_text', xx))
-        self.parameter_set_if_set('camera_annotate_text_size',
-                lambda xx: setattr(self.camera, 'annotate_text_size', xx))
-        self.camera.brightness = self.get_parameter_value('camera_brightness')
-        self.camera.contrast = self.get_parameter_value('camera_contrast')
-        if self.has_parameter('camera_exif_copyright'):
-            self.camera.exif_tage['IFDO.Copyright'] = self.get_parameter_value('camera_exif_copyright')
-        if self.has_parameter('camera_exif_user_comment'):
-            self.camera.exif_tage['EXIF.UserComment'] = self.get_parameter_value('camera_exif_user_comment')
-        self.camera.exposure_compensation = self.get_parameter_value('camera_exposure_compenstation')
-        self.camera.exposure_mode = self.get_parameter_value('camera_exposure_mode')
-        self.camera.hflip = self.get_parameter_value('camera_hflip')
-        self.camera.vflip = self.get_parameter_value('camera_vflip')
-        self.camera.image_effect = self.get_parameter_value('camera_image_effect')
-        self.camera.meter_mode = self.get_parameter_value('camera_meter_mode')
-        self.image_width = self.get_parameter_value('camera_image_width')
-        self.image_height = self.get_parameter_value('camera_image_height')
-        self.camera.resolution = ( self.image_width, self.image_height )
-        self.get_logger().debug('CAM: setting capture resolution = %s/%s'
-                % (self.camera.resolution[0], self.camera.resolution[1]))
-        self.camera.saturation = self.get_parameter_value('camera_saturation')
-        self.camera.sharpness = self.get_parameter_value('camera_sharpness')
+        self.camera.set(cv2.CAP_PROP_CONVERT_RGB, True)
+        self.camera.set(cv2.CAP_PROP_FPS, self.get_parameter_value('camera_frame_rate'))
+
+        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.get_parameter_value('camera_image_width'))
+        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.get_parameter_value('camera_image_height'))
+
+        if self.get_parameter_value('camera_awb_mode'):
+            self.camera.set(cv2.CAP_PROP_AUTO_WB, True)
+        else:
+            self.camera.set(cv2.CAP_PROP_AUTO_WB, False)
+            self.camera.set(cv2.CAP_PROP_AUTO_WB, self.get_parameter_value('camera_temp'))
+        
+        self.camera.set(cv2.CAP_PROP_CONTRAST, self.get_parameter_value('camera_contrast'))
+        self.camera.set(cv2.CAP_PROP_BRIGHTNESS, self.get_parameter_value('camera_brightness'))
+
+        # self.camera.brightness = self.get_parameter_value('camera_brightness')
+        # self.camera.contrast = self.get_parameter_value('camera_contrast')
+        # if self.has_parameter('camera_exif_copyright'):
+        #     self.camera.exif_tage['IFDO.Copyright'] = self.get_parameter_value('camera_exif_copyright')
+        # if self.has_parameter('camera_exif_user_comment'):
+        #     self.camera.exif_tage['EXIF.UserComment'] = self.get_parameter_value('camera_exif_user_comment')
+        # self.camera.exposure_compensation = self.get_parameter_value('camera_exposure_compenstation')
+        # self.camera.exposure_mode = self.get_parameter_value('camera_exposure_mode')
+        # self.camera.hflip = self.get_parameter_value('camera_hflip')
+        # self.camera.vflip = self.get_parameter_value('camera_vflip')
+        # self.camera.image_effect = self.get_parameter_value('camera_image_effect')
+        # self.camera.meter_mode = self.get_parameter_value('camera_meter_mode')
+        # self.image_width = self.get_parameter_value('camera_image_width')
+        # self.image_height = self.get_parameter_value('camera_image_height')
+        # self.camera.resolution = ( self.image_width, self.image_height )
+        # self.get_logger().debug('CAM: setting capture resolution = %s/%s'
+        #        % (self.camera.resolution[0], self.camera.resolution[1]))
+        # self.camera.saturation = self.get_parameter_value('camera_saturation')
+        # self.camera.sharpness = self.get_parameter_value('camera_sharpness')
 
     def initialize_capture_queue(self):
         # Create a queue and two threads to capture and then push the images to the topic
