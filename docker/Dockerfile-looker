@@ -8,7 +8,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV TERM=linux
 
 # Change to the non-root user so after this is all app space
-USER nonroot
+env USER=nonroot
+USER $USER
 
 # Get the node code
 RUN cd \
@@ -17,8 +18,9 @@ RUN cd \
     && . /opt/ros/foxy/setup.sh \
     && colcon build
 
-COPY files/looker-start.sh /home/nonroot
+COPY --chown=${USER}:${USER} files/looker-start.sh /home/${USER}
 
-ENTRYPOINT [ "/usr/bin/tini", "--", "/home/nonroot/looker-start.sh" ]
+# NOTE reference to USER. This command doesn't do the substitution in strings
+ENTRYPOINT [ "/usr/bin/tini", "--", "/home/look/looker-start.sh" ]
 # Default arguments for your app (remove if you have none)
 # CMD [ "--foo", "1", "--bar=2" ]
