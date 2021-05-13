@@ -26,6 +26,11 @@ RUN cd \
 RUN cd \
     && pip3 install --system Adafruit-GPIO
 
+# OpenCV
+# Installing 'headless' means Qt and X11 bindings not pulled in
+RUN cd \
+    && pip3 install opencv-python-headless
+
 # Use the version of v4l2 that has been updated for python3
 RUN pip3 install git+https://github.com/aspotton/python3-v4l2.git
 
