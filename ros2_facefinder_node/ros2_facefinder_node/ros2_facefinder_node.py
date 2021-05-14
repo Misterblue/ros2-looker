@@ -121,7 +121,7 @@ class ROS2_facefinder_node(Node):
                                     % (msg.header.frame_id, len(msg.data)) )
                 # as of 20181016, the msg.data is returned as a list of ints. Convert to bytearray.
                 converted_data = []
-                with CodeTimer(self.get_logger().debug, 'convert to byte array'):
+                with CodeTimer(self, 'convert to byte array'):
                     converted_data = bytearray(msg.data)
 
                 # prepare the image and make suitable for face finding
@@ -142,7 +142,7 @@ class ROS2_facefinder_node(Node):
         img = None
         try:
             # imageio.imread returns a numpy array where img[h][w] => [r, g, b]
-            with CodeTimer(self.get_logger().debug, 'decompress image'):
+            with CodeTimer(self, 'decompress image'):
                 img = imageio.imread(io.BytesIO(raw_img))
                 img.meta['width'] = len(img[0])
                 img.meta['height'] = len(img)
@@ -156,7 +156,7 @@ class ROS2_facefinder_node(Node):
     def find_faces(self, img):
         # Given and image, find the faces therein and return the bounding boxes.
         # Returns an array of 'dlib.rectangle'.
-        with CodeTimer(self.get_logger().debug, 'detect faces'):
+        with CodeTimer(self, 'detect faces'):
             detected = self.detector(img, 0)
         if len(detected) > 0:
             self.get_logger().info('FFinder: detected %s faces' % (len(detected)))
@@ -215,16 +215,16 @@ class CodeTimer:
     #                Do_some_statements
     # This will call 'logger' after the block of statements is complete with
     #    a message containing the 'name' and the CPU time used by the statements.
-    def __init__(self, logger, name=None):
-        self.logger = logger
+    def __init__(self, parent, name=None):
+        self.parent = parent
         self.name = " '"  + name + "'" if name else ''
 
     def __enter__(self):
-        self.start = time.clock()
+        self.start = time.time()
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.took = (time.clock() - self.start) * 1000.0
-        self.logger('Code block' + self.name + ' took: ' + str(self.took) + ' ms')
+        self.took = time.time() - self.start
+        self.parent.get_logger().debug('Code block' + self.name + ' took: ' + str(self.took) + ' ms')
 
 def main(args=None):
     rclpy.init(args=args)
