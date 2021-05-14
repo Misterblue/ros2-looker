@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import io
+import numpy as np
 import queue
 import threading
 import time
@@ -26,6 +27,9 @@ from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import Int32MultiArray
 from std_msgs.msg import MultiArrayDimension
 
+import cv2
+from cv_bridge import CvBridge
+
 import dlib
 import imageio
 
@@ -35,13 +39,16 @@ class ROS2_facefinder_node(Node):
         super().__init__('ros2_facefinder_node', namespace='raspicam')
 
         self.set_parameter_defaults( [
-            ('image_input_topic', Parameter.Type.STRING, 'raspicam_compressed'),
+            ('image_input_topic', Parameter.Type.STRING, 'raspicam_uncompressed'),
             ('image_input_topic_subqos', Parameter.Type.INTEGER, 10),
-            ('image_compressed', Parameter.Type.BOOL, True),
+            ('image_compressed_input_topic', Parameter.Type.STRING, 'raspicam_compressed'),
+            ('image_compressed_input_topic_subqos', Parameter.Type.INTEGER, 10),
             ('face_output_topic', Parameter.Type.STRING, 'found_faces'),
             ('face_output_topic_subqos', Parameter.Type.INTEGER, 10),
             ('face_output_topic_pubqos', Parameter.Type.INTEGER, 10)
             ] )
+
+        self.bridge = CvBridge()
 
         self.initialize_face_recognizer()
         self.initialize_image_subscriber()
@@ -59,18 +66,16 @@ class ROS2_facefinder_node(Node):
 
     def initialize_image_subscriber(self):
         # Setup subscription for incoming images.
-        if self.get_parameter_value('image_compressed'):
-            self.receiver = self.create_subscription(
-                        CompressedImage, self.get_parameter_value('image_input_topic'),
-                        self.receive_image,
-                        self.get_parameter_value('image_input_topic_subqos'),
-                        )
-        else:
-            self.receiver = self.create_subscription(
-                        Image, self.get_parameter_value('image_input_topic'),
-                        self.receive_image,
-                        self.get_parameter_value('image_input_topic_subqos'),
-                        )
+        self.receiverCompressed = self.create_subscription(
+                    CompressedImage, self.get_parameter_value('image_compressed_input_topic'),
+                    self.receive_compressed_image,
+                    self.get_parameter_value('image_compressed_input_topic_subqos'),
+                    )
+        self.receiver = self.create_subscription(
+                    Image, self.get_parameter_value('image_input_topic'),
+                    self.receive_image,
+                    self.get_parameter_value('image_input_topic_subqos'),
+                    )
         self.frame_num = 0
 
     def initialize_bounding_box_publisher(self):
@@ -104,6 +109,12 @@ class ROS2_facefinder_node(Node):
             self.get_logger().debug('FFinder: receive_image. dataLen=%s' % (len(msg.data)) )
             self.image_queue.put(msg)
 
+    def receive_compressed_image(self, msg):
+        # Called to process message received by subscription. Queue the message.
+        if msg != None and hasattr(msg, 'data'):
+            self.get_logger().debug('FFinder: receive_compressed_image. dataLen=%s' % (len(msg.data)) )
+            self.image_queue.put(msg)
+
     def process_images(self):
         # Take images from the queue and find the faces therein.
         # This runs on its own thread so as not to block reception.
@@ -119,39 +130,49 @@ class ROS2_facefinder_node(Node):
             if type(msg) != type(None):
                 self.get_logger().debug('FFinder: process_image frame=%s, dataLen=%s'
                                     % (msg.header.frame_id, len(msg.data)) )
-                # as of 20181016, the msg.data is returned as a list of ints. Convert to bytearray.
-                converted_data = []
-                with CodeTimer(self, 'convert to byte array'):
-                    converted_data = bytearray(msg.data)
 
                 # prepare the image and make suitable for face finding
-                img = self.convert_image(converted_data)
+                img, iwidth, iheight = self.convert_image(msg)
 
                 # if there is a good image, find any faces
                 if type(img) != type(None):
                     face_bounding_boxes = self.find_faces(img)
                     self.publish_bounding_boxes(face_bounding_boxes,
-                                img.meta['width'], img.meta['height'])
+                                iwidth, iheight)
 
-    def convert_image(self, raw_img):
-        # Convert the passed buffer into a proper Python image. I.e., use imageio
+    def convert_image(self, msg):
+        # Convert the passed sensor message into a proper Python image. I.e., use imageio
         #    to do any uncompression, etc.
         # Note that the returned array is a subclass of numpy.array that includes a
         #    '.meta' dictionary which returns 'height' and 'width' of the converted image.
         # TODO: add any logic needed to prepare either compressed or uncompressed images.
         img = None
+        width = 10
+        height = 10
+
+        # as of 20181016, the msg.data is returned as a list of ints. Convert to bytearray.
+        # converted_data = []
+        # with CodeTimer(self, 'convert to byte array'):
+        #     converted_data = bytearray(msg.data)
+
         try:
-            # imageio.imread returns a numpy array where img[h][w] => [r, g, b]
-            with CodeTimer(self, 'decompress image'):
-                img = imageio.imread(io.BytesIO(raw_img))
-                img.meta['width'] = len(img[0])
-                img.meta['height'] = len(img)
-            self.get_logger().debug('FFinder: imread image: h=%s, w=%s' % (len(img), len(img[0])))
+            if hasattr(msg, 'encoding'):
+                # the uncompressed image format is specificed by 'encoding'
+                img = self.bridge.imgmsg_to_cv2(msg)
+                iwidth = msg.width
+                iheight = msg.height
+            else:
+                # imageio.imread returns a numpy array where img[h][w] => [r, g, b]
+                with CodeTimer(self, 'decompress image'):
+                    img = imageio.imread(io.BytesIO(image.data))
+                    iwidth = len(img[0])
+                    iheight = len(img)
+                    self.get_logger().debug('FFinder: imread image: h=%s, w=%s' % (len(img), len(img[0])))
         except Exception as e:
             self.get_logger().error('FFinder: exception uncompressing image. %s: %s'
                             % (type(e), e.args) )
             img = None
-        return img
+        return img, width, height;
 
     def find_faces(self, img):
         # Given and image, find the faces therein and return the bounding boxes.
