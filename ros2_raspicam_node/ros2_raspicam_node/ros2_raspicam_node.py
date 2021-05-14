@@ -32,7 +32,7 @@ class ROS2_raspicam_node(Node):
         super().__init__('ros2_raspicam_node', namespace='raspicam')
 
         self.set_parameter_defaults( [
-            ('compressed_image', Parameter.Type.BOOL, True),
+            ('compressed_image', Parameter.Type.BOOL, False),
             ('image_topic', Parameter.Type.STRING, 'raspicam_uncompressed'),
             ('image_topic_qos', Parameter.Type.INTEGER, 10),
             ('compressed_image_topic', Parameter.Type.STRING, 'raspicam_compressed'),
@@ -176,34 +176,39 @@ class ROS2_raspicam_node(Node):
             while self.keepRunning:
                 ret, frame = self.camera.read()
                 if ret == True:
-                   if self.get_parameter_value('compressed_image'):
+                    if self.get_parameter_value('compressed_image'):
                         result, encimg = cv2.imencode('.jpg', frame)
                         if result == True:
-                            self.write_compressed_capture(encimg)
-                   else:
-                        self.write_capture(encimg)
+                            self.write_compressed_capture(encimg, 'jpeg')
+                    else:
+                        encimg = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        self.write_capture(encimg, 'rgb8')
 
                 time.sleep(0.5)
         except Exception as err:
             self.get_logger().error('take_pictures: exiting take_pictures because of exception')
             self.get_logger().error(traceback.format_exc())
 
-    def write_capture(self, frame):
+    def write_capture(self, frame, fmt):
         with self.queue_lock:
             msg = Image()
-            msg.data = frame
+            msg.data = np.array(frame).tostring()
+            msg.encoding = fmt
             msg.header.frame_id = str(self.frame_num)
+            msg.height = self.get_parameter_value('camera_image_height')
+            msg.width = self.get_parameter_value('camera_image_width')
+            msg.step = 3 * msg.width
             self.frame_num += 1
             self.get_logger().debug('write_capture: capture frame. size=%s, frame=%s'
                     % (len(frame), msg.header.frame_id) )
             # msg.header.stamp = time.Time
             self.capture_queue.put(msg)
 
-    def write_compressed_capture(self, frame):
+    def write_compressed_capture(self, frame, fmt):
         with self.queue_lock:
             msg = CompressedImage()
             msg.data = np.array(frame).tostring()
-            msg.format = 'jpeg'
+            msg.format = fmt
             msg.header.frame_id = str(self.frame_num)
             self.frame_num += 1
             self.get_logger().debug('write_compressed_capture: capture frame. size=%s, frame=%s'
