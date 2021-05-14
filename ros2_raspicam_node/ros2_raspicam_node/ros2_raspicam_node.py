@@ -24,6 +24,8 @@ from rclpy.parameter import Parameter
 from rclpy.node import Node
 from sensor_msgs.msg import Image, CompressedImage
 
+from cv_bridge import CvBridge
+
 import cv2
 
 class ROS2_raspicam_node(Node):
@@ -51,6 +53,8 @@ class ROS2_raspicam_node(Node):
             ('camera_brightness', Parameter.Type.INTEGER, 55),
             # Contrast: -100..100, default 0
             ('camera_contrast', Parameter.Type.INTEGER, 0),
+            ('camera_hflip', Parameter.Type.BOOL, False),
+            ('camera_vflip', Parameter.Type.BOOL, True),
 
             # ('camera_exif_copyright', Parameter.Type.STRING, 'Copyrightt 2018 MY NAME'),
             # ('camera_user_comment', Parameter.Type.STRING, 'SOMETHING INFORMATIVE'),
@@ -78,6 +82,8 @@ class ROS2_raspicam_node(Node):
 
         self.camera = cv2.VideoCapture(0)
         time.sleep(1);  # let camera initialization complete
+
+        self.bridge = CvBridge()
 
         self.initialize_publisher()
         self.set_camera_parameters()
@@ -176,6 +182,16 @@ class ROS2_raspicam_node(Node):
             while self.keepRunning:
                 ret, frame = self.camera.read()
                 if ret == True:
+                    # Flip the image if requested
+                    if self.get_parameter_value('camera_vflip'):
+                        if self.get_parameter_value('camera_hflip'):
+                            frame = cv2.flip(frame, -1)
+                        else:
+                            frame = cv2.flip(frame, 0)
+                    else:
+                        if self.get_parameter_value('camera_hflip'):
+                            frame = cv2.flip(frame, 1)
+
                     if self.get_parameter_value('compressed_image'):
                         result, encimg = cv2.imencode('.jpg', frame)
                         if result == True:
@@ -191,8 +207,7 @@ class ROS2_raspicam_node(Node):
 
     def write_capture(self, frame, fmt):
         with self.queue_lock:
-            msg = Image()
-            msg.data = np.array(frame).tostring()
+            msg = self.bridge.cv2_to_imgmsg(frame)
             msg.encoding = fmt
             msg.header.frame_id = str(self.frame_num)
             msg.height = self.get_parameter_value('camera_image_height')
