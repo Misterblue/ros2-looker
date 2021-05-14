@@ -31,6 +31,10 @@ RUN cd \
 RUN cd \
     && pip3 install opencv-python-headless
 
+# Install CvBridge and othe vision processing for ROS2/OpenCV use
+RUN apt-get install -y ros-foxy-cv-bridge
+    && apt-get install -y ros-foxy-vision-opencv
+
 # Use the version of v4l2 that has been updated for python3
 RUN pip3 install git+https://github.com/aspotton/python3-v4l2.git
 
