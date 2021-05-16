@@ -12,6 +12,9 @@ else
 fi
 echo "Setting ROS_DOMAIN_ID=${ROS_DOMAIN_ID}"
 
+# The docker container must be able to access the video device
+sudo chmod 666 /dev/video0
+
 docker run \
     -t \
     -d \
