@@ -199,7 +199,7 @@ class ROS2_raspicam_node(Node):
                     else:
                         # encimg = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                         # self.write_capture(encimg, 'rgb8')
-                        self.write_capture(frame, 'rgb8')
+                        self.write_capture(frame, 'bgr8')
 
                 time.sleep(0.5)
         except Exception as err:
