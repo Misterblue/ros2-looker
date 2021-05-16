@@ -17,11 +17,11 @@ docker run \
     -d \
     --rm \
     --name=ros2-raspicam-node \
-    -e ROS_DOMAIN=${ROS_DOMAIN_ID} \
+    -e ROS_DOMAIN_ID=${ROS_DOMAIN_ID} \
+    -e LOOKER_PACKAGE=ros2_raspicam_node \
     --network=host \
     --privileged \
     misterblue/ros2-looker:latest
-    ros2-raspicam-node
 
 #    --restart=unless-stopped
     
