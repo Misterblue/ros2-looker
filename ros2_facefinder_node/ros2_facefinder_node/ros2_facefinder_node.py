@@ -147,8 +147,8 @@ class ROS2_facefinder_node(Node):
         #    '.meta' dictionary which returns 'height' and 'width' of the converted image.
         # TODO: add any logic needed to prepare either compressed or uncompressed images.
         img = None
-        width = 10
-        height = 10
+        iwidth = 10
+        iheight = 10
 
         # as of 20181016, the msg.data is returned as a list of ints. Convert to bytearray.
         # converted_data = []
@@ -172,7 +172,7 @@ class ROS2_facefinder_node(Node):
             self.get_logger().error('FFinder: exception uncompressing image. %s: %s'
                             % (type(e), e.args) )
             img = None
-        return img, width, height;
+        return img, iwidth, iheight;
 
     def find_faces(self, img):
         # Given and image, find the faces therein and return the bounding boxes.
