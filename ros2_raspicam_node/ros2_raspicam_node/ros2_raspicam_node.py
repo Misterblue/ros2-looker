@@ -40,6 +40,7 @@ class ROS2_raspicam_node(Node):
             ('compressed_image_topic', Parameter.Type.STRING, 'raspicam_compressed'),
             ('compressed_image_topic_qos', Parameter.Type.INTEGER, 10),
 
+            ('camera_index', Parameter.Type.INTEGER, 0),
             ('camera_frame_rate', Parameter.Type.INTEGER, 2),
             ('camera_image_width', Parameter.Type.INTEGER, 640),
             ('camera_image_height', Parameter.Type.INTEGER, 480),
@@ -80,7 +81,7 @@ class ROS2_raspicam_node(Node):
 
         self.keepRunning = True
 
-        self.camera = cv2.VideoCapture(0)
+        self.camera = cv2.VideoCapture(self.get_parameter_value('camera_index'))
         time.sleep(1);  # let camera initialization complete
 
         self.bridge = CvBridge()
