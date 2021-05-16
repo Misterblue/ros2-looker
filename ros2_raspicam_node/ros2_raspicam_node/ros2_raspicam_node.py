@@ -115,14 +115,14 @@ class ROS2_raspicam_node(Node):
         self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.get_parameter_value('camera_image_width'))
         self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.get_parameter_value('camera_image_height'))
 
-        if self.get_parameter_value('camera_awb_mode'):
-            self.camera.set(cv2.CAP_PROP_AUTO_WB, 1.0)
-        else:
-            self.camera.set(cv2.CAP_PROP_AUTO_WB, 0)
-            self.camera.set(cv2.CAP_PROP_AUTO_WB, self.get_parameter_value('camera_temp'))
+        #if self.get_parameter_value('camera_awb_mode'):
+        #    self.camera.set(cv2.CAP_PROP_AUTO_WB, 1.0)
+        #else:
+        #    self.camera.set(cv2.CAP_PROP_AUTO_WB, 0.0)
+        #    self.camera.set(cv2.CAP_PROP_TEMPERATURE, self.get_parameter_value('camera_temp'))
         
-        self.camera.set(cv2.CAP_PROP_CONTRAST, self.get_parameter_value('camera_contrast'))
-        self.camera.set(cv2.CAP_PROP_BRIGHTNESS, self.get_parameter_value('camera_brightness'))
+        #self.camera.set(cv2.CAP_PROP_CONTRAST, self.get_parameter_value('camera_contrast'))
+        #self.camera.set(cv2.CAP_PROP_BRIGHTNESS, self.get_parameter_value('camera_brightness'))
 
         # self.camera.brightness = self.get_parameter_value('camera_brightness')
         # self.camera.contrast = self.get_parameter_value('camera_contrast')
