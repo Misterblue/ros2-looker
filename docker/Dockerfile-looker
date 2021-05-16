@@ -20,7 +20,7 @@ RUN cd \
     && git clone https://github.com/Misterblue/ros2-looker.git \
     && cd ros2-looker \
     && . /opt/ros/foxy/setup.sh \
-    && colcon build --packages-select ros2_adafruit_pwmhat_msgs ros2_adafruit_pwmhat_node ros2_raspicam_node ros2_facefinder_node 
+    && colcon build
 
 COPY --chown=${USER}:${USER} files/looker-start.sh /home/${USER}
 
