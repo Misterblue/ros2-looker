@@ -208,11 +208,11 @@ class ROS2_raspicam_node(Node):
     def write_capture(self, frame, fmt):
         with self.queue_lock:
             msg = self.bridge.cv2_to_imgmsg(frame)
-            msg.encoding = fmt
+            # msg.encoding = fmt
+            # msg.height = self.get_parameter_value('camera_image_height')
+            # msg.width = self.get_parameter_value('camera_image_width')
+            # msg.step = 3 * msg.width
             msg.header.frame_id = str(self.frame_num)
-            msg.height = self.get_parameter_value('camera_image_height')
-            msg.width = self.get_parameter_value('camera_image_width')
-            msg.step = 3 * msg.width
             self.frame_num += 1
             self.get_logger().debug('write_capture: capture frame. size=%s, frame=%s'
                     % (len(frame), msg.header.frame_id) )
