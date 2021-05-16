@@ -7,12 +7,13 @@ RUN echo UTC > /etc/timezone
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TERM=linux
 
-# Change to the non-root user so after this is all app space
 env USER=nonroot
-USER ${USER}
 
 # Add the user to the 'video' group in case it wants to use the camera
 RUN usermod -a -G video ${USER}
+
+# Change to the non-root user so after this is all app space
+USER ${USER}
 
 # Get the node code
 RUN cd \
