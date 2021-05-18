@@ -55,6 +55,7 @@ class ROS2_facelook_node(Node):
                         self.get_parameter_value('bounding_box_topic'),
                         self.receive_bounding_box,
                         self.get_parameter_value('bounding_box_topic_subqos') )
+        self.get_logger().debug('FLooker: initialized bounding box receiver on %s' % (self.get_parameter_value('bounding_box_topic')))
 
     def initialize_processing_queue(self):
         # Create a queue and a thread that processes messages in the queue
@@ -68,6 +69,7 @@ class ROS2_facelook_node(Node):
         self.processor = threading.Thread(target=self.process_bounding_boxes, name='bounding box')
 
         self.processor.start()
+        self.get_logger().debug('FLooker: initialized processing queue')
 
     def initialize_pwm_publisher(self):
         # initialize 'known' angle so first request will be sure to go out
@@ -81,6 +83,7 @@ class ROS2_facelook_node(Node):
                             self.get_parameter_value('max_angle'),
                             self.get_logger())
         self.send_pwm_commands(self.pan_angle, self.tilt_angle)
+        self.get_logger().debug('FLooker: initialized angle publisher')
 
     def stop_workers(self):
         # if workers are initialized and running, tell them to stop and wait until stopped
