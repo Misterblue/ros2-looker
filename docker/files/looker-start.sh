@@ -20,11 +20,15 @@ if [[ "$OK" != "yes" ]] ; then
     exit 5
 fi
 
-DEBUGG=""
+ROSARGS=""
 if [[ "$IFDEBUG" != "no" ]] ; then
-    DEBUGG="--ros-args --log-level debug"
+    ROSARGS="--ros-args --log-level debug"
 fi
 
+# Wait for the docker container to settle down and complete initialization
+sleep 5
+
 echo "Running executable $NODE in package $PACKAGE"
-ros2 run "$PACKAGE" "$NODE" ${DEBUGG}
+echo "   setting args = ${ROSARGS}"
+ros2 run "$PACKAGE" "$NODE" ${ROSARGS}
 
