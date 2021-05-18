@@ -22,6 +22,7 @@ docker run \
     --name=ros2-adafruit_pwmhat-node \
     -e ROS_DOMAIN_ID=${ROS_DOMAIN_ID} \
     -e LOOKER_PACKAGE=ros2_adafruit_pwmhat_node \
+    -e LOOKER_DEBUG=${LOOKER_DEBUG:-no} \
     --network=host \
     --privileged \
     misterblue/ros2-looker:latest
