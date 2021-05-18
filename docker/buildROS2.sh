@@ -11,6 +11,7 @@ if [[ "$1" == "NOCACHE" ]] ; then
     NOCACHE=--no-cache
 fi 
 
+#PLATFORM=linux/amd64,linux/arm64
+PLATFORM=linux/arm64
 
-docker buildx build ${NOCACHE} -t "${REPOS}/${TAG}:${VER}" --push --platform linux/amd64,linux/arm64 -f "${DF}" .
-# docker buildx build --load -t "${TAG}:${VER}" -f "${DF}" .
+docker buildx build ${NOCACHE} -t "${REPOS}/${TAG}:${VER}" --push --platform ${PLATFORM} -f "${DF}" .
