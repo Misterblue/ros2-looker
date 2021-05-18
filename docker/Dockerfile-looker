@@ -15,6 +15,9 @@ RUN usermod -a -G video ${USER}
 # Change to the non-root user so after this is all app space
 USER ${USER}
 
+# Break the cache if the ros2-looker sources have changed
+ADD https://api.github.com/repos/misterblue/ros2-looker/git/refs/heads/main git-version.json
+
 # Get the node code
 RUN cd \
     && git clone https://github.com/Misterblue/ros2-looker.git \
